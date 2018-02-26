@@ -71,15 +71,14 @@ def test_code(test_case):
     alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7');
     # Create Modified DH parameters
     s = {
-        alpha0:     0, a0:      0, d1:  0.75, q1:        q1,
-        alpha1: -pi/2, a1:   0.35, d2:     0, q2: q2 - pi/2.,
-        alpha2:     0, a2:   1.25, d3:     0, q3:        q3,
-        alpha3: -pi/2, a3: -0.054, d4:   1.5, q4:        q4,
-        alpha4:  pi/2, a4:      0, d5:     0, q5:        q5,
-        alpha5: -pi/2, a5:      0, d6:     0, q6:        q6,
-        alpha6:     0, a6:      0, d7: 0.303, q7:         0 
-    };
-
+        alpha0:     0, a0:      0, d1:  0.75, q1:       q1,
+        alpha1: -pi/2., a1:   0.35, d2:    0, q2:-pi/2. + q2,
+        alpha2:     0, a2:   1.25, d3:     0, q3:       q3,
+        alpha3: -pi/2., a3: -0.054, d4:   1.5, q4:       q4,
+        alpha4:  pi/2., a4:      0, d5:     0, q5:       q5,
+        alpha5: -pi/2., a5:      0, d6:     0, q6:       q6,
+        alpha6:     0, a6:      0, d7: 0.303, q7:        0 
+    }   
     # Define Modified DH Transformation matrix
     def TF_Matrix(alpha, a, d, q):
         TF = Matrix([[           cos(q),           -sin(q),           0,               a],
@@ -87,8 +86,7 @@ def test_code(test_case):
                      [sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),  cos(alpha) * d],
                      [                0,                  0,             0,            1]])
         return TF;
-
-    # Create individual trnsformation matrices
+    # Create individual transformation matrices
     T0_1 = TF_Matrix(alpha0, a0, d1, q1).subs(s);
     T1_2 = TF_Matrix(alpha1, a1, d2, q2).subs(s);
     T2_3 = TF_Matrix(alpha2, a2, d3, q3).subs(s);
@@ -96,11 +94,37 @@ def test_code(test_case):
     T4_5 = TF_Matrix(alpha4, a4, d5, q5).subs(s);
     T5_6 = TF_Matrix(alpha5, a5, d6, q6).subs(s);
     T6_EE = TF_Matrix(alpha6, a6, d7, q7).subs(s);
+    # T3_6 = T3_4 * T4_5 * T5_6;
+    # R3_6 = T3_6[0:3, 0:3];
+    # print(R3_6);
 
     T0_EE = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE;
+    
 
-    # # Extract rotation matrices from the transformation matrices
-    # Extracted_Rotation = T_total[0:3, 0:3];
+    R = symbols('R');
+    Y = symbols('Y');
+    P = symbols('P');
+
+    ### Build Rotation Matrix extrinsic
+
+    RotRoll_x  = Matrix([[1,      0,      0],
+                         [0, cos(R),-sin(R)],
+                         [0, sin(R), cos(R)]]);
+    RotPitch_y = Matrix([[cos(P),  0, sin(P)],
+                         [0,       1,      0],
+                         [-sin(P), 0, cos(P)]]);
+    RotYaw_z   = Matrix([[cos(Y), -sin(Y),  0],
+                         [sin(Y),  cos(Y),  0],
+                         [0,            0,  1]]);
+    Rot_EE = RotYaw_z * RotPitch_y * RotRoll_x;
+    Rot_Error = RotYaw_z.subs(Y, radians(180)) * RotPitch_y.subs(P, radians(-90));
+    Rot_Error_joint = Rot_Error.row_join(Matrix([[0],[0],[0]])).col_join(Matrix([[0,0,0,1]]));
+    Rot_EE = Rot_EE * Rot_Error;
+    wc_to_ee = 0.303;
+    ###
+    R0_3 = T0_1[0:3, 0:3] * T1_2[0:3, 0:3] * T2_3[0:3, 0:3]
+    # Initialize service response
+
 
     # Extract end-effector position and orientation from request
     # px,py,pz = end-effector position
@@ -112,44 +136,30 @@ def test_code(test_case):
     (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
         [req.poses[x].orientation.x, req.poses[x].orientation.y,
             req.poses[x].orientation.z, req.poses[x].orientation.w])
-    # Defining Roll, Pitch, Yaw
-    R,P,Y = symbols('R P Y');
 
-    ### Build Rotation Matrix extrinsic
-    RotRoll_x = Matrix([[1,      0,      0],
-                        [0, cos(R),-sin(R)],
-                        [0, sin(R), cos(R)]]);
-    RotPitch_y = Matrix([[cos(P),  0, sin(P)],
-                         [0,       1,      0],
-                         [-sin(P), 0, cos(P)]]);
-    RotYaw_z = Matrix([[cos(Y), -sin(Y),  0],
-                       [sin(Y),  cos(Y),  0],
-                       [0,            0,  1]]);
-    Rot_EE = RotYaw_z * RotPitch_y * RotRoll_x;
-    Rot_Error = RotYaw_z.subs(Y, radians(180)) * RotPitch_y.subs(P, radians(-90));
-    Rot_Error_1 = Rot_Error.row_join(Matrix([[0],[0],[0]])).col_join(Matrix([[0,0,0,1]]))
-    
-    Rot_EE = Rot_EE * Rot_Error;
-    euler = {Y: yaw, P: pitch, R: roll};
+        ### Your IK code here
+
+    euler = {R: roll, P: pitch, Y: yaw};
     Rrpy = Rot_EE.subs(euler);
-    # ee_positions = {PX: px, PY: py, PZ: pz};
-   
-    # print("Rrpy is: ", Rrpy);
-    ### Calculate wc
     nx = Rrpy[0,2];
     ny = Rrpy[1,2];
     nz = Rrpy[2,2];
-    wc_to_ee = s[d7];
+    
+    ### Calculate wrist center
     wx = px - wc_to_ee * nx;
     wy = py - wc_to_ee * ny;
     wz = pz - wc_to_ee * nz;
-    ### Calculate theta
-
+    # Calculate joint angles using Geometric IK method
     theta1 = atan2(wy, wx);
-    side_a = sqrt(s[a3]**2 + s[d4]**2);
-    side_c = s[a2];
-    wcx = wz - s[d1];
-    wcy = sqrt(wx**2 + wy**2) - s[a1];
+    # side_a = sqrt(s[a3]**2 + s[d4]**2);
+    side_a = 1.501
+    side_c = 1.25
+    # side_c = s[a2];
+    # wcx = wz - s[d1];
+    wcx = wz - 0.75;
+    # wcy = sqrt(wx**2 + wy**2) - s[a1];
+    wcy = sqrt(wx**2 + wy**2) - 0.35;
+
     side_b = sqrt(wcy**2 + wcx**2);
 
     angle_a = acos((side_b**2 + side_c**2 - side_a**2)/(2*side_b*side_c));
@@ -158,27 +168,14 @@ def test_code(test_case):
     theta2 = pi/2 - angle_a - atan2(wcx, wcy);
     theta3 = pi/2 - (angle_b + 0.036);
 
-    ### After get theta1,2,3, we can fill in the rotation matrix of R0_3
-    R0_3 = T0_1[0:3, 0:3] * T1_2[0:3, 0:3] * T2_3[0:3, 0:3]
+    
     R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3});
-    ### Geting Rotation Matrix from 3 to 6
     R3_6 = R0_3.inv("LU") * Rrpy;
-    ### Euler angles from rotation matrix
+
+    # Convert the rotation matrix to Euler angles using tf
     theta4 = atan2(R3_6[2,2], -R3_6[0,2]);
     theta5 = atan2(sqrt(R3_6[0,2]**2 + R3_6[2,2]**2), R3_6[1,2]);
     theta6 = atan2(-R3_6[1,1], R3_6[1,0]);
-    # print("theta4, theta5, theta6", theta4, theta5, theta6);
-    R3_6_np = np.array(R3_6).astype(np.float64)
-
-    # Convert the rotation matrix to Euler angles using tf
-    alpha, beta, gamma = tf.transformations.euler_from_matrix(
-        R3_6_np, axes='rxyz')   # xyx, yzx, xyz
-    theta4 = alpha
-    theta5 = beta
-    theta6 = gamma
-
-    theta4 = np.pi/2 + theta4
-    theta5 = np.pi/2 - theta5
     # print("theta4, theta5, theta6", theta4, theta5, theta6);
 
     ## 
@@ -189,7 +186,7 @@ def test_code(test_case):
     ## as the input and output the position of your end effector as your_ee = [x,y,z]
 
     ## (OPTIONAL) YOUR CODE HERE!
-    FK = (T0_EE).evalf(subs={q1: theta1, q2: theta2, q3: theta3, q4: theta4, q5: theta5, q6: theta6});
+    FK = (T0_EE ).evalf(subs={q1: theta1, q2: theta2, q3: theta3, q4: theta4, q5: theta5, q6: theta6});
 
     ## End your code input for forward kinematics here!
     ########################################################################################
