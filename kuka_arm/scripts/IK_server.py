@@ -133,6 +133,10 @@ def handle_calculate_IK(req):
             theta2 = pi/2 - angle_a - atan2(wcx, wcy);
             theta3 = pi/2 - (angle_b + 0.036);
 
+            theta1 = np.clip(theta1, -3.23, 3.23);
+            theta2 = np.clip(theta2, -0.79, 1.48);
+            theta3 = np.clip(theta3, -3.67, 1.13);
+
             
             R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3});
             R3_6 = R0_3.inv("LU") * Rrpy;
@@ -142,6 +146,10 @@ def handle_calculate_IK(req):
             theta5 = atan2(sqrt(R3_6[0,2]**2 + R3_6[2,2]**2), R3_6[1,2]);
             theta6 = atan2(-R3_6[1,1], R3_6[1,0]);
             # print("theta4, theta5, theta6", theta4, theta5, theta6);
+
+            theta4 = np.clip(theta4, -6.11, 6.11);
+            theta5 = np.clip(theta5, -2.18, 2.18);
+            theta6 = np.clip(theta6, -6.11, 6.11);
 
             # Populate response for the IK request
             joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]

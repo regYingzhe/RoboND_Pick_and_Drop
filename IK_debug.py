@@ -88,17 +88,26 @@ def test_code(test_case):
         return TF;
     # Create individual transformation matrices
     T0_1 = TF_Matrix(alpha0, a0, d1, q1).subs(s);
+    # print("T0_1 is", T0_1);
     T1_2 = TF_Matrix(alpha1, a1, d2, q2).subs(s);
+    # print("T1_2 is", T1_2);
     T2_3 = TF_Matrix(alpha2, a2, d3, q3).subs(s);
+    # print("T2_3 is", T2_3);
     T3_4 = TF_Matrix(alpha3, a3, d4, q4).subs(s);
+    # print("T3_4 is", T3_4);
     T4_5 = TF_Matrix(alpha4, a4, d5, q5).subs(s);
+    # print("T4_5 is", T4_5);
     T5_6 = TF_Matrix(alpha5, a5, d6, q6).subs(s);
+    # print("T5_6 is", T5_6);
     T6_EE = TF_Matrix(alpha6, a6, d7, q7).subs(s);
+    # print("T6_EE is", T6_EE);
     # T3_6 = T3_4 * T4_5 * T5_6;
     # R3_6 = T3_6[0:3, 0:3];
-    # print(R3_6);
+    # print("R3_6 is", R3_6);
+
 
     T0_EE = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE;
+    # print("T0_6 is", T0_EE);
     
 
     R = symbols('R');
@@ -168,6 +177,10 @@ def test_code(test_case):
     theta2 = pi/2 - angle_a - atan2(wcx, wcy);
     theta3 = pi/2 - (angle_b + 0.036);
 
+    theta1 = np.clip(theta1, -3.23, 3.23);
+    theta2 = np.clip(theta2, -0.79, 1.48);
+    theta3 = np.clip(theta3, -3.67, 1.13);
+
     
     R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3});
     R3_6 = R0_3.inv("LU") * Rrpy;
@@ -176,6 +189,11 @@ def test_code(test_case):
     theta4 = atan2(R3_6[2,2], -R3_6[0,2]);
     theta5 = atan2(sqrt(R3_6[0,2]**2 + R3_6[2,2]**2), R3_6[1,2]);
     theta6 = atan2(-R3_6[1,1], R3_6[1,0]);
+
+    theta4 = np.clip(theta4, -6.11, 6.11);
+    theta5 = np.clip(theta5, -2.18, 2.18);
+    theta6 = np.clip(theta6, -6.11, 6.11);
+
     # print("theta4, theta5, theta6", theta4, theta5, theta6);
 
     ## 
